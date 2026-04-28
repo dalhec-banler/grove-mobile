@@ -38,31 +38,26 @@ class BrowseViewModel(application: Application) : AndroidViewModel(application) 
                 repository.views,
                 repository.isConnected,
                 repository.connectionState,
-                repository.shipName,
-                repository.pendingUploads
-            ) { files, views, connected, connState, shipName, pending ->
-                Array6(files, views, connected, connState, shipName, pending)
-            }.combine(_searchQuery) { arr, query ->
-                val files = arr.first
-                val filteredFiles = if (query.isBlank()) {
-                    files
-                } else {
-                    files.filter {
-                        it.name.contains(query, ignoreCase = true) ||
-                        it.tags.any { tag -> tag.contains(query, ignoreCase = true) }
-                    }
-                }
-
+                repository.shipName
+            ) { files, views, connected, connState, shipName ->
                 BrowseUiState(
-                    files = filteredFiles.sortedByDescending { it.modified },
-                    views = arr.second,
-                    searchQuery = query,
-                    isConnected = arr.third,
-                    connectionState = arr.fourth,
-                    shipName = arr.fifth,
-                    pendingUploads = arr.sixth,
+                    files = files.sortedByDescending { it.modified },
+                    views = views,
+                    isConnected = connected,
+                    connectionState = connState,
+                    shipName = shipName,
                     isLoading = false
                 )
+            }.combine(_searchQuery) { state, query ->
+                val filteredFiles = if (query.isBlank()) {
+                    state.files
+                } else {
+                    state.files.filter { file ->
+                        file.name.contains(query, ignoreCase = true) ||
+                        file.tags.any { tag -> tag.contains(query, ignoreCase = true) }
+                    }
+                }
+                state.copy(files = filteredFiles, searchQuery = query)
             }.collect { state ->
                 _uiState.value = state
             }
@@ -70,11 +65,6 @@ class BrowseViewModel(application: Application) : AndroidViewModel(application) 
 
         autoConnect()
     }
-
-    private data class Array6<A, B, C, D, E, F>(
-        val first: A, val second: B, val third: C,
-        val fourth: D, val fifth: E, val sixth: F
-    )
 
     private fun autoConnect() {
         viewModelScope.launch {

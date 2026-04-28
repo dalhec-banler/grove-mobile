@@ -91,8 +91,6 @@ fun BrowseScreen(
         ) {
             if (!uiState.isConnected) {
                 ConnectBanner(onConnect = { showConnectDialog = true })
-            } else {
-                ConnectionIndicator(isConnected = true)
             }
 
             SearchBar(
@@ -241,6 +239,7 @@ private fun SearchBar(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ViewChips(
     views: List<GroveView>,
