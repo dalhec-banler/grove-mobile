@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.nativeplanet.grove.data.ConnectionState
 import io.nativeplanet.grove.domain.model.GroveFile
 import io.nativeplanet.grove.domain.model.GroveView
 import java.time.ZoneId
@@ -39,14 +40,18 @@ fun BrowseScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text("Grove")
-                        if (uiState.shipName != null) {
-                            Text(
-                                text = uiState.shipName ?: "",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        ConnectionIndicator(uiState.connectionState)
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text("Grove")
+                            if (uiState.shipName != null) {
+                                Text(
+                                    text = uiState.shipName ?: "",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 },
@@ -194,26 +199,21 @@ private fun ConnectBanner(onConnect: () -> Unit) {
 }
 
 @Composable
-private fun ConnectionIndicator(isConnected: Boolean) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(if (isConnected) Color(0xFF4CAF50) else Color(0xFFEF5350))
-        )
-        Spacer(Modifier.width(6.dp))
-        Text(
-            text = if (isConnected) "Connected" else "Offline",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+private fun ConnectionIndicator(state: ConnectionState) {
+    val (color, pulse) = when (state) {
+        ConnectionState.CONNECTED -> Color(0xFF4CAF50) to false
+        ConnectionState.CONNECTING -> Color(0xFFFF9800) to true
+        ConnectionState.RECONNECTING -> Color(0xFFFF9800) to true
+        ConnectionState.DISCONNECTED -> Color(0xFF9E9E9E) to false
+        ConnectionState.ERROR -> Color(0xFFEF5350) to false
     }
+
+    Box(
+        modifier = Modifier
+            .size(10.dp)
+            .clip(CircleShape)
+            .background(color)
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

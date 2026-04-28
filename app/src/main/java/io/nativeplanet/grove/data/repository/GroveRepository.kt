@@ -52,7 +52,9 @@ class GroveRepository(
     val pendingUploads: Flow<Int> = pendingUploadDao.getPendingCount()
 
     val isConnected: StateFlow<Boolean> = urbitClient.isConnected
+    val connectionState = urbitClient.connectionState
     val shipName: StateFlow<String?> = urbitClient.shipName
+    val lastError: StateFlow<String?> = urbitClient.lastError
 
     suspend fun connect(code: String): Boolean {
         val success = urbitClient.authenticate(code)

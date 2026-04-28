@@ -5,6 +5,7 @@ import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import io.nativeplanet.grove.data.ConnectionState
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
@@ -17,18 +18,22 @@ import okhttp3.sse.EventSources
 import java.io.File
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.math.min
 
 class UrbitClient(
     private val baseUrl: String = "http://127.0.0.1:80"
 ) {
     companion object {
         private const val TAG = "UrbitClient"
+        private const val INITIAL_RECONNECT_DELAY_MS = 1000L
+        private const val MAX_RECONNECT_DELAY_MS = 60000L
     }
 
     private val gson = Gson()
     private val eventId = AtomicLong(1)
     private var channelId: String? = null
     private var authCookie: String? = null
+    private var reconnectDelay = INITIAL_RECONNECT_DELAY_MS
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -37,13 +42,22 @@ class UrbitClient(
         .retryOnConnectionFailure(true)
         .build()
 
-    private val _connectionState = MutableStateFlow(false)
-    val isConnected: StateFlow<Boolean> = _connectionState.asStateFlow()
+    private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
+    val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
+
+    val isConnected: StateFlow<Boolean> = _connectionState.map { it == ConnectionState.CONNECTED }
+        .stateIn(CoroutineScope(Dispatchers.Default), SharingStarted.Eagerly, false)
 
     private val _shipName = MutableStateFlow<String?>(null)
     val shipName: StateFlow<String?> = _shipName.asStateFlow()
 
+    private val _lastError = MutableStateFlow<String?>(null)
+    val lastError: StateFlow<String?> = _lastError.asStateFlow()
+
     suspend fun authenticate(code: String): Boolean = withContext(Dispatchers.IO) {
+        _connectionState.value = ConnectionState.CONNECTING
+        _lastError.value = null
+
         try {
             val body = "password=$code".toRequestBody("application/x-www-form-urlencoded".toMediaType())
             val request = Request.Builder()
@@ -57,17 +71,32 @@ class UrbitClient(
                         .find { it.startsWith("urbauth") }
                         ?.split(";")?.firstOrNull()
                     fetchShipName()
-                    _connectionState.value = true
+                    _connectionState.value = ConnectionState.CONNECTED
+                    reconnectDelay = INITIAL_RECONNECT_DELAY_MS
                     true
                 } else {
                     Log.e(TAG, "Auth failed: ${response.code}")
+                    _connectionState.value = ConnectionState.ERROR
+                    _lastError.value = "Authentication failed (${response.code})"
                     false
                 }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Auth error", e)
+            _connectionState.value = ConnectionState.ERROR
+            _lastError.value = e.message
             false
         }
+    }
+
+    fun getReconnectDelay(): Long {
+        val delay = reconnectDelay
+        reconnectDelay = min(reconnectDelay * 2, MAX_RECONNECT_DELAY_MS)
+        return delay
+    }
+
+    fun resetReconnectDelay() {
+        reconnectDelay = INITIAL_RECONNECT_DELAY_MS
     }
 
     private suspend fun fetchShipName() {
@@ -184,12 +213,13 @@ class UrbitClient(
 
             override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
                 Log.e(TAG, "SSE failure", t)
-                _connectionState.value = false
+                _connectionState.value = ConnectionState.RECONNECTING
+                _lastError.value = t?.message
             }
 
             override fun onClosed(eventSource: EventSource) {
                 Log.d(TAG, "SSE closed")
-                _connectionState.value = false
+                _connectionState.value = ConnectionState.DISCONNECTED
             }
         }
 
@@ -264,8 +294,14 @@ class UrbitClient(
     }
 
     fun disconnect() {
-        _connectionState.value = false
+        _connectionState.value = ConnectionState.DISCONNECTED
         channelId = null
         authCookie = null
+        _lastError.value = null
+        resetReconnectDelay()
+    }
+
+    fun setReconnecting() {
+        _connectionState.value = ConnectionState.RECONNECTING
     }
 }

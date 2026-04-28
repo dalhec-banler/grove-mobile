@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.nativeplanet.grove.GroveApp
+import io.nativeplanet.grove.data.ConnectionState
 import io.nativeplanet.grove.domain.model.GroveFile
 import io.nativeplanet.grove.domain.model.GroveView
 import kotlinx.coroutines.flow.*
@@ -15,6 +16,7 @@ data class BrowseUiState(
     val selectedView: String? = null,
     val searchQuery: String = "",
     val isConnected: Boolean = false,
+    val connectionState: ConnectionState = ConnectionState.DISCONNECTED,
     val shipName: String? = null,
     val pendingUploads: Int = 0,
     val isLoading: Boolean = true,
@@ -35,10 +37,13 @@ class BrowseViewModel(application: Application) : AndroidViewModel(application) 
                 repository.files,
                 repository.views,
                 repository.isConnected,
+                repository.connectionState,
                 repository.shipName,
-                repository.pendingUploads,
-                _searchQuery
-            ) { files, views, connected, shipName, pending, query ->
+                repository.pendingUploads
+            ) { files, views, connected, connState, shipName, pending ->
+                Array6(files, views, connected, connState, shipName, pending)
+            }.combine(_searchQuery) { arr, query ->
+                val files = arr.first
                 val filteredFiles = if (query.isBlank()) {
                     files
                 } else {
@@ -50,11 +55,12 @@ class BrowseViewModel(application: Application) : AndroidViewModel(application) 
 
                 BrowseUiState(
                     files = filteredFiles.sortedByDescending { it.modified },
-                    views = views,
+                    views = arr.second,
                     searchQuery = query,
-                    isConnected = connected,
-                    shipName = shipName,
-                    pendingUploads = pending,
+                    isConnected = arr.third,
+                    connectionState = arr.fourth,
+                    shipName = arr.fifth,
+                    pendingUploads = arr.sixth,
                     isLoading = false
                 )
             }.collect { state ->
@@ -64,6 +70,11 @@ class BrowseViewModel(application: Application) : AndroidViewModel(application) 
 
         autoConnect()
     }
+
+    private data class Array6<A, B, C, D, E, F>(
+        val first: A, val second: B, val third: C,
+        val fourth: D, val fifth: E, val sixth: F
+    )
 
     private fun autoConnect() {
         viewModelScope.launch {
