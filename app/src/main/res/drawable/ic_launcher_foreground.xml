@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Tree crown - layered circles for a grove/forest feel -->
+    <!-- Main large crown -->
+    <path
+        android:fillColor="#FF2D5A27"
+        android:pathData="M54,24
+                         C38,24 28,36 28,48
+                         C28,60 38,70 54,70
+                         C70,70 80,60 80,48
+                         C80,36 70,24 54,24Z"/>
+
+    <!-- Left smaller tree crown -->
+    <path
+        android:fillColor="#FF3D7A37"
+        android:pathData="M36,32
+                         C28,32 22,40 22,48
+                         C22,56 28,62 36,62
+                         C44,62 50,56 50,48
+                         C50,40 44,32 36,32Z"/>
+
+    <!-- Right smaller tree crown -->
+    <path
+        android:fillColor="#FF3D7A37"
+        android:pathData="M72,32
+                         C64,32 58,40 58,48
+                         C58,56 64,62 72,62
+                         C80,62 86,56 86,48
+                         C86,40 80,32 72,32Z"/>
+
+    <!-- Top accent -->
+    <path
+        android:fillColor="#FF4D8A47"
+        android:pathData="M54,20
+                         C44,20 36,28 36,38
+                         C36,48 44,54 54,54
+                         C64,54 72,48 72,38
+                         C72,28 64,20 54,20Z"/>
+
+    <!-- Trunk -->
+    <path
+        android:fillColor="#FF5D3A1A"
+        android:pathData="M48,62 L48,84 L60,84 L60,62
+                         C58,64 56,65 54,65
+                         C52,65 50,64 48,62Z"/>
+
+    <!-- Trunk detail -->
+    <path
+        android:fillColor="#FF4D2A0A"
+        android:pathData="M52,66 L52,84 L56,84 L56,66Z"/>
+
+</vector>
