@@ -8,6 +8,7 @@ on:
 
 jobs:
   build:
+    name: Build Debug APK
     runs-on: ubuntu-latest
 
     steps:
@@ -19,7 +20,11 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -27,22 +32,15 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
-      - name: Build Release APK
-        run: ./gradlew assembleRelease
-
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: grove-debug
           path: app/build/outputs/apk/debug/*.apk
-
-      - name: Upload Release APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: grove-release
-          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
 
   lint:
+    name: Lint
     runs-on: ubuntu-latest
 
     steps:
@@ -54,7 +52,11 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -65,6 +67,8 @@ jobs:
 
       - name: Upload Lint Report
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: lint-report
           path: app/build/reports/lint-results-*.html
+          if-no-files-found: ignore
